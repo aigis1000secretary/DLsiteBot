@@ -11,6 +11,7 @@ const cheerio = require("cheerio");
 let indexReg = /([RBV]J\d{6})/;
 
 const getDLsitePage = async (index) => {
+    console.log(index)
     let req, url;
 
     try {
@@ -134,6 +135,10 @@ module.exports = {
     description: "get dl page data",
     async execute(message, args) {
 
+        // get permissions
+        let permissions = message.channel.permissionsFor(message.member.guild.me);
+        // for (let key of ['SEND_MESSAGES', 'EMBED_LINKS', 'MANAGE_MESSAGES']) { console.log(key, permissions.has(key)) }
+
         // check index code
         let arg = args.shift().toUpperCase();
         if (!indexReg.test(arg)) { return false; }
@@ -144,13 +149,17 @@ module.exports = {
         if (!result) { return false; }
 
         // build result embed
-        if (result.schedule) { description += `発売予定日： ${result.schedule}`; }
-        description += `\n**価格： ${result.price}**`;
-        if (result.strike) { description += `  ~~${result.strike}~~`; }
+        if (result.schedule) {
+            description += `発売予定日： ${result.schedule}`;
+            description += `\n**予定価格： ${result.price}**`;
+        } else {
+            description += `\n**価格： ${result.price}**`;
+        }
+        if (result.strike) { description += `　  ~~${result.strike}~~`; } // 原価
         if (result.deals || result.point) {
             description += '```css\n'
             if (result.deals) { description += ` [${result.deals}]`; }
-            if (result.point) { description += ` ${result.point}`; }
+            if (result.point) { description += ` ${result.point}還元`; }
             description += '```';
         }
         for (let pair of result.table) {
@@ -195,6 +204,12 @@ module.exports = {
                     .addComponents(
                         new Discord.MessageButton()
                             .setStyle("PRIMARY")
+                            .setLabel(`1/${result.thumb.length}`)
+                            .setCustomId("dlThumbNum")
+                    )
+                    .addComponents(
+                        new Discord.MessageButton()
+                            .setStyle("PRIMARY")
                             .setLabel(">>")
                             .setCustomId("dlThumbNext")
                     )
@@ -208,8 +223,24 @@ module.exports = {
             }
         }
 
-        message.channel.send({ embeds: [embed], components }).catch(() => { });
-        message.suppressEmbeds(true).catch(() => { });
+        // check permissions
+        if (!permissions.has('SEND_MESSAGES')) {
+            console.log('Missing Permissions: SEND_MESSAGES');
+            return false;
+        }
+        if (!permissions.has('EMBED_LINKS')) {
+            console.log('Missing Permissions: EMBED_LINKS');
+            message.channel.send('Missing Permissions: EMBED_LINKS');
+            return false;
+        }
+        message.channel.send({ embeds: [embed], components }).catch(console.log);
+
+        if (!permissions.has('MANAGE_MESSAGES')) {
+            console.log('Missing Permissions: MANAGE_MESSAGES');
+            return true;
+        }
+        message.suppressEmbeds(true).catch(console.log);
+
         return true;
     },
     async interacted(interaction) {
@@ -218,21 +249,24 @@ module.exports = {
 
         // get button parametet
         const msg = interaction.message;
-        const embed = msg.embeds[0];
+        // get button row
         const row = msg.components[0];
-        let [, imgTag, imgLength] = row.components[3].customId.split(' ');    // _img_(smpa)(2)
+        let [, imgTag, imgLength] = row.components.find(btn => btn.customId.startsWith('dlThumbEnd')).customId.split(' ');    // _img_(smpa)(2)
         imgLength = parseInt(imgLength);
+        // get old embeds
+        const embed = msg.embeds[0];
+        if (!embed.image) { return false; }
 
         // get image url data
         let imageUrl = embed.image.url;
         let [, oldTag] = imageUrl.match(/_img_([^\.]+)/);    // _img_(smpa2)
         let imgIndex = (oldTag == 'main' ? 0 : parseInt(oldTag.match(/(\d+)/)));
         // get new img index
-        switch (interaction.customId) {
+        switch (interaction.customId.split(' ')[0]) {
             case "dlThumbMain": { imgIndex = 0; } break;
             case "dlThumbNext": { imgIndex = (imgIndex + 1) % imgLength; } break;
             case "dlThumbPrve": { imgIndex = (imgIndex + imgLength - 1) % imgLength; } break;
-            default: { imgIndex = imgLength - 1; } break;
+            case "dlThumbEnd": { imgIndex = imgLength - 1; } break;
         }
         // get new img tag
         let newTag = 'main';
@@ -240,8 +274,11 @@ module.exports = {
 
         // set new img
         embed.setImage(imageUrl.replace(oldTag, newTag));
+        // edit button label
+        let label = row.components.find(btn => btn.customId.startsWith('dlThumbNum'));
+        if (label) { label.setLabel(`${imgIndex + 1}/${imgLength}`) }
         // edit message
-        msg.edit({ embeds: [embed], components: [row] });
+        msg.edit({ embeds: [embed], components: [row] }).catch(console.log);
 
         // mute reply
         interaction.reply({ content: ' ' }).catch(() => { });
