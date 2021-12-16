@@ -141,7 +141,6 @@ module.exports = {
 
         // download dlsite page
         let result = await getDLsitePage(index), description = '';
-        console.log(result)
         if (!result) { return false; }
 
         // build result embed
