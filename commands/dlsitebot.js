@@ -168,7 +168,7 @@ module.exports = {
             .setURL(result.url)
             .setDescription(description);
 
-        let row = null;
+        let components;
         if (result.thumb) {
             // set img
             embed.setThumbnail(result.thumb[0]);
@@ -179,7 +179,7 @@ module.exports = {
                 // get last img tag
                 let [, imgTag] = result.thumb[1].match(/_img_([^\.\d]+)/);
 
-                row = new Discord.MessageActionRow()
+                components = [new Discord.MessageActionRow()
                     .addComponents(
                         new Discord.MessageButton()
                             .setStyle("PRIMARY")
@@ -203,12 +203,13 @@ module.exports = {
                             .setStyle("PRIMARY")
                             .setLabel(">|")
                             .setCustomId(`dlThumbEnd ${imgTag} ${result.thumb.length}`)
-                    );
+                    )
+                ];
             }
         }
 
-        message.channel.send({ embeds: [embed], components: [row] });
-        message.suppressEmbeds(true).catch(console.log);
+        message.channel.send({ embeds: [embed], components }).catch(() => { });
+        message.suppressEmbeds(true).catch(() => { });
         return true;
     },
     async interacted(interaction) {
@@ -219,7 +220,8 @@ module.exports = {
         const msg = interaction.message;
         const embed = msg.embeds[0];
         const row = msg.components[0];
-        const [, imgTag, imgLength] = row.components[3].customId.split(' ');    // _img_(smpa)(2)
+        let [, imgTag, imgLength] = row.components[3].customId.split(' ');    // _img_(smpa)(2)
+        imgLength = parseInt(imgLength);
 
         // get image url data
         let imageUrl = embed.image.url;
