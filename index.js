@@ -6,7 +6,8 @@ const { PREFIX } = require('./config.js');
 const Discord = require('discord.js');
 const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"], partials: ["MESSAGE", "CHANNEL", "REACTION"] });
 client.commands = new Discord.Collection();
-
+// express
+const server = require('./server.js');
 
 // get text command
 let pluginTypes = ['commands'];
@@ -60,6 +61,7 @@ client.on('interactionCreate', async (interaction) => {
 client.once('ready', async () => {
     // dc bot online
     console.log('=====BOT is online!=====');
+    server.init();
 
     // setup
     console.log(`setup plugins(${client.commands.size}):`);
