@@ -90,3 +90,5 @@ typings/
 .vscode/
 
 *.lnk
+
+debug.js
