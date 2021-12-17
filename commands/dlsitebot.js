@@ -130,99 +130,101 @@ const getDLsitePage = async (index) => {
     }
 }
 
+const createDLsitePageMessage = (result) => {
+
+    // build result embed
+    let description = '';
+    if (result.schedule) {
+        description += `発売予定日： ${result.schedule}`;
+        description += `\n**予定価格： ${result.price}**`;
+    } else {
+        description += `**価格： ${result.price}**`;
+    }
+    if (result.strike) { description += `　  ~~${result.strike}~~`; } // 原価
+    if (result.deals || result.point) {
+        description += '```css\n'
+        if (result.deals) { description += ` [${result.deals}]`; }
+        if (result.point) { description += ` ${result.point}還元`; }
+        description += '```';
+    }
+    for (let pair of result.table) {
+        if (pair[0] == 'サークル名') {
+            description += `\n${pair[0]}： [${pair[1]}](${result.makerUrl})`;
+            continue;
+        }
+        description += `\n${pair[0]}： ${pair[1]}`;
+    }
+
+    const embed = new Discord.MessageEmbed()
+        .setColor('#010d85')
+        .setTitle(`${result.title} [${result.index}]`)
+        .setURL(result.url)
+        .setURL(result.url)
+        .setDescription(description);
+
+    let components;
+    if (result.thumb) {
+        // set img
+        embed.setThumbnail(result.thumb[0]);
+        embed.setImage(`${result.thumb[0]}`);
+
+        // image switch button
+        if (result.thumb.length > 1) {
+            // get last img tag
+            let [, imgTag] = result.thumb[1].match(/_img_([^\.\d]+)/);
+
+            components = [new Discord.MessageActionRow()
+                .addComponents(
+                    new Discord.MessageButton()
+                        .setStyle("PRIMARY")
+                        .setLabel("|<")
+                        .setCustomId("dlThumbMain")
+                )
+                .addComponents(
+                    new Discord.MessageButton()
+                        .setStyle("PRIMARY")
+                        .setLabel("<<")
+                        .setCustomId("dlThumbPrve")
+                )
+                .addComponents(
+                    new Discord.MessageButton()
+                        .setStyle("PRIMARY")
+                        .setLabel(`1/${result.thumb.length}`)
+                        .setCustomId("dlThumbNum")
+                )
+                .addComponents(
+                    new Discord.MessageButton()
+                        .setStyle("PRIMARY")
+                        .setLabel(">>")
+                        .setCustomId("dlThumbNext")
+                )
+                .addComponents(
+                    new Discord.MessageButton()
+                        .setStyle("PRIMARY")
+                        .setLabel(">|")
+                        .setCustomId(`dlThumbEnd ${imgTag} ${result.thumb.length}`)
+                )
+            ];
+        }
+    }
+
+    return { embeds: [embed], components };
+}
+
+
 module.exports = {
     name: 'DLsiteBot',
     description: "get dl page data",
     async execute(message, args) {
-
-        // get permissions
-        let permissions = message.channel.permissionsFor(message.member.guild.me);
-        // for (let key of ['SEND_MESSAGES', 'EMBED_LINKS', 'MANAGE_MESSAGES']) { console.log(key, permissions.has(key)) }
 
         // check index code
         let arg = args.shift().toUpperCase();
         if (!indexReg.test(arg)) { return false; }
         let [, index] = arg.match(indexReg);
 
-        // download dlsite page
-        let result = await getDLsitePage(index), description = '';
-        if (!result) { return false; }
-
-        // build result embed
-        if (result.schedule) {
-            description += `発売予定日： ${result.schedule}`;
-            description += `\n**予定価格： ${result.price}**`;
-        } else {
-            description += `\n**価格： ${result.price}**`;
-        }
-        if (result.strike) { description += `　  ~~${result.strike}~~`; } // 原価
-        if (result.deals || result.point) {
-            description += '```css\n'
-            if (result.deals) { description += ` [${result.deals}]`; }
-            if (result.point) { description += ` ${result.point}還元`; }
-            description += '```';
-        }
-        for (let pair of result.table) {
-            if (pair[0] == 'サークル名') {
-                description += `\n${pair[0]}： [${pair[1]}](${result.makerUrl})`;
-                continue;
-            }
-            description += `\n${pair[0]}： ${pair[1]}`;
-        }
-
-        const embed = new Discord.MessageEmbed()
-            .setColor('#010d85')
-            .setTitle(`${result.title} [${result.index}]`)
-            .setURL(result.url)
-            .setURL(result.url)
-            .setDescription(description);
-
-        let components;
-        if (result.thumb) {
-            // set img
-            embed.setThumbnail(result.thumb[0]);
-            embed.setImage(`${result.thumb[0]}`);
-
-            // image switch button
-            if (result.thumb.length > 1) {
-                // get last img tag
-                let [, imgTag] = result.thumb[1].match(/_img_([^\.\d]+)/);
-
-                components = [new Discord.MessageActionRow()
-                    .addComponents(
-                        new Discord.MessageButton()
-                            .setStyle("PRIMARY")
-                            .setLabel("|<")
-                            .setCustomId("dlThumbMain")
-                    )
-                    .addComponents(
-                        new Discord.MessageButton()
-                            .setStyle("PRIMARY")
-                            .setLabel("<<")
-                            .setCustomId("dlThumbPrve")
-                    )
-                    .addComponents(
-                        new Discord.MessageButton()
-                            .setStyle("PRIMARY")
-                            .setLabel(`1/${result.thumb.length}`)
-                            .setCustomId("dlThumbNum")
-                    )
-                    .addComponents(
-                        new Discord.MessageButton()
-                            .setStyle("PRIMARY")
-                            .setLabel(">>")
-                            .setCustomId("dlThumbNext")
-                    )
-                    .addComponents(
-                        new Discord.MessageButton()
-                            .setStyle("PRIMARY")
-                            .setLabel(">|")
-                            .setCustomId(`dlThumbEnd ${imgTag} ${result.thumb.length}`)
-                    )
-                ];
-            }
-        }
-
+        // get permissions
+        let permissions = message.channel.permissionsFor(message.member.guild.me);
+        // for (let key of ['SEND_MESSAGES', 'EMBED_LINKS', 'MANAGE_MESSAGES']) { console.log(key, permissions.has(key)) }
         // check permissions
         if (!permissions.has('SEND_MESSAGES')) {
             console.log('Missing Permissions: SEND_MESSAGES');
@@ -233,8 +235,16 @@ module.exports = {
             message.channel.send('Missing Permissions: EMBED_LINKS');
             return false;
         }
-        message.channel.send({ embeds: [embed], components }).catch(console.log);
 
+        // download dlsite page
+        let result = await getDLsitePage(index);
+        if (!result) { return false; }
+
+        // create Message Payload
+        let messagePayload = createDLsitePageMessage(result);
+        message.channel.send(messagePayload).catch(console.log);
+
+        // check manager permissions
         if (!permissions.has('MANAGE_MESSAGES')) {
             console.log('Missing Permissions: MANAGE_MESSAGES');
             return true;
@@ -247,15 +257,34 @@ module.exports = {
         if (!interaction.isButton()) { return false; }
         if (!interaction.customId.startsWith("dlThumb")) { return false; }
 
-        // get button parametet
+        // get button parameter
         const msg = interaction.message;
-        // get button row
-        const row = msg.components[0];
-        let [, imgTag, imgLength] = row.components.find(btn => btn.customId.startsWith('dlThumbEnd')).customId.split(' ');    // _img_(smpa)(2)
-        imgLength = parseInt(imgLength);
         // get old embeds
         const embed = msg.embeds[0];
-        if (!embed.image) { return false; }
+        // get button row
+        const row = msg.components[0];
+
+        if (interaction.customId == "dlThumbNum" && embed.url) {
+            // mute reply
+            interaction.reply({ content: ' ' }).catch(() => { });
+
+            let [, index] = embed.url.match(indexReg);
+
+            // download dlsite page
+            let result = await getDLsitePage(index);
+            if (!result) { return true; }
+
+            // create Message Payload
+            let messagePayload = createDLsitePageMessage(result);
+            // edit message
+            msg.edit(messagePayload).catch(console.log);
+            return true;
+        }
+
+        // check image parameter
+        if (!embed || !embed.image) { return false; }
+        let [, imgTag, imgLength] = row.components.find(btn => btn.customId.startsWith('dlThumbEnd')).customId.split(' ');
+        imgLength = parseInt(imgLength);
 
         // get image url data
         let imageUrl = embed.image.url;
@@ -277,6 +306,13 @@ module.exports = {
         // edit button label
         let label = row.components.find(btn => btn.customId.startsWith('dlThumbNum'));
         if (label) { label.setLabel(`${imgIndex + 1}/${imgLength}`) }
+        else {
+            row.components.splice(2, 0,
+                new Discord.MessageButton().setStyle("PRIMARY")
+                    .setLabel(`${imgIndex + 1}/${imgLength}`)
+                    .setCustomId("dlThumbNum")
+            );
+        }
         // edit message
         msg.edit({ embeds: [embed], components: [row] }).catch(console.log);
 
