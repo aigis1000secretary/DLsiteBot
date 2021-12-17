@@ -4,7 +4,7 @@
   "description": "DLsiteBot",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm init -y && npm i --save-dev node@16 && npm config set prefix=$(pwd)/node_modules/node && export PATH=$(pwd)/node_modules/node/bin:$PATH && exit 0",
     "start": "node index.js"
   },
   "repository": {
